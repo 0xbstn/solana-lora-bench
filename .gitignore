@@ -1,0 +1,26 @@
+# Dependencies
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# Model weights (too large for git)
+models/*.safetensors
+models/*.bin
+models/*.gguf
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Data (large files tracked via HuggingFace, not git)
+data/raw/*.json
+data/raw/*.jsonl
