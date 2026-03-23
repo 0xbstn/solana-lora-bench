@@ -25,7 +25,7 @@ Open-weight and fine-tuned models are missing from the picture.
 
 ## Open-Source Baseline Results
 
-Open-source model baseline on Solana Bench ([full report](results/BENCHMARK_REPORT.md)):
+Open-source model baseline on Solana Bench Basic environment ([full report](results/BENCHMARK_REPORT.md)):
 
 | Model | Median | Mean | Max | Success Rate |
 |-------|--------|------|-----|-------------|
