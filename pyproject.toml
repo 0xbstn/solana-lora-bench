@@ -1,0 +1,14 @@
+[project]
+name = "solana-lora-bench"
+version = "0.1.0"
+description = "LoRA fine-tuned open-weight models evaluated on Solana Bench"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=1.0",
+    "distilabel>=1.0",
+]
+
+[project.urls]
+Repository = "https://github.com/0xbstn/solana-lora-bench"

@@ -1,9 +1,0 @@
-{
-  "total_runs": 65,
-  "total_success_pairs": 674,
-  "total_error_fix_pairs": 481,
-  "total_code_blocks": 3161,
-  "basic_runs": 40,
-  "runs_with_reward": 61,
-  "swap_runs": 25
-}

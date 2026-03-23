@@ -2,7 +2,11 @@
 .venv/
 __pycache__/
 *.pyc
+*.pyo
 node_modules/
+*.egg-info/
+dist/
+build/
 
 # Environment
 .env
@@ -24,3 +28,17 @@ Thumbs.db
 # Data (large files tracked via HuggingFace, not git)
 data/raw/*.json
 data/raw/*.jsonl
+
+# Validator runtime
+validator/node_modules/
+validator/bun.lock
+validator/tmp/
+
+# Results (large files)
+results/error_patterns_*.json
+results/validation_report.json
+
+# Python
+.pytest_cache/
+.coverage
+*.log
