@@ -1,93 +1,90 @@
 # solana-lora-bench
 
-Fine-tuned open-weight models evaluated on [Solana Bench](https://github.com/solana-foundation/solana-gym-env).
+Open-source model evaluation and fine-tuning dataset for [Solana Bench](https://github.com/solana-foundation/solana-gym-env).
 
-## Context
+## Key Findings
 
-Solana Bench measures how well LLMs compose and execute real Solana transactions in a sandboxed environment (Surfpool). Current evaluations cover frontier models only:
+We benchmarked 6 open-source models on Solana Bench (10 runs each, 50 messages) and re-analyzed the original frontier model data. We discovered:
 
-| Model | Median Score | Max | Min |
-|-------|-------------|-----|-----|
-| Claude Sonnet 4 | 115 | 181 | 30 |
-| GPT-5 | 60 | 66 | 57 |
-| Gemini 2.5 Flash | 40 | 44 | 23 |
-| gpt-oss-120b | 23 | 25 | 16 |
+- **Claude Sonnet 4's reported score of 115 is 74% Memo inflation** — real score: 18.9
+- **DeepSeek V3.2 (21.9) surpasses Claude Sonnet 4** when Memo gaming is controlled
+- **GPT-5 (44.5) is the true leader** — barely uses Memo (2%)
+- Two critical bugs in the upstream codebase silently discarded all valid transactions
 
-Open-weight and fine-tuned models are missing from the picture.
+Full analysis: [results/BENCHMARK_REPORT.md](results/BENCHMARK_REPORT.md)
 
-## Approach
+## Combined Leaderboard (Memo Filtered)
 
-1. Extract code-generation training pairs from 130 existing Solana Bench trajectories
-2. Augment with synthetic generation (self-instruct, variations, error-recovery, targeted patterns)
-3. Validate every example on Surfpool — only keep code that serializes correctly
-4. LoRA fine-tune on Qwen 3.5-35B-A3B (MoE, 3B active params)
-5. Evaluate on Solana Bench under the same conditions as frontier models
+| Rank | Model | Type | Score |
+|------|-------|------|-------|
+| 1 | GPT-5 | Frontier | 44.5 |
+| 2 | DeepSeek V3.2 | Open-source | 21.9 |
+| 3 | Gemini 2.5 Flash | Frontier | 20.2 |
+| 4 | Claude Sonnet 4 | Frontier | 18.9 |
+| 5 | GPT-oss-120B | Open-weight | 15.6 |
+| 6 | Llama 4 Maverick | Open-source | 9.2 |
+| 7 | Qwen3-235B-A22B | Open-source | 8.4 |
+| 8 | Qwen3-32B | Open-source | 7.8 |
+| 9 | Qwen3.5-35B-A3B | Open-source | 7.2 |
+| 10 | Qwen3-30B-A3B | Open-source | 4.6 |
 
-## Open-Source Baseline Results
+## Bug Fixes (submitted upstream)
 
-Open-source model baseline on Solana Bench Basic environment ([full report](results/BENCHMARK_REPORT.md)):
+1. **`KeyError(0)` in `_get_ordered_instructions`** — silently discarded ~66% of valid transactions
+2. **`UnboundLocalError` in metrics tracking** — lost all message metrics when no code blocks found
 
-| Model | Median | Mean | Max | Success Rate |
-|-------|--------|------|-----|-------------|
-| Qwen3.5-35B-A3B | 18 | 51.2 | 108 | 28% |
-| DeepSeek V3.2 | 20 | 28.4 | 37 | 22% |
-| Llama 4 Maverick | 14 | 13.6 | 16 | 12% |
-| Qwen3-235B-A22B | 12 | 10.6 | 15 | 9% |
+Without these fixes, all open-source evaluations return 0.
 
 ## Dataset
 
-1,439 validated training examples. Every example serializes correctly on Surfpool.
+1,305 validated training examples for Solana transaction code generation. Every example serializes correctly on Surfpool.
 
-| Source | Count | Description |
-|--------|-------|-------------|
-| Self-instruct | 454 | Generated task descriptions + code |
-| Solana cookbook (regen) | 489 | Cookbook prompts with regenerated offline code |
-| Targeted patterns | 290 | Targeted at top 6 error categories from benchmark |
-| Benchmark trajectories | 100 | Original successful code from Solana Bench runs |
-| Variations | 97 | Variations of high-reward examples |
-| Error-recovery pairs | 9 | Buggy code + fix pairs |
+| Category | Count |
+|----------|-------|
+| Single-turn instruction/code pairs | ~1,240 |
+| Multi-turn error-recovery conversations | ~65 |
+| **Total (validated)** | **1,305** |
+
+Covers: SystemProgram, ComputeBudget, SPL Token, Token-2022 (with extensions), ATA, Stake, Nonce, VersionedTransaction.
+
+## Approach
+
+1. Benchmark 6 open-source models on Solana Bench Basic (10 runs × 50 messages)
+2. Extract error patterns (1,247 errors categorized) and successful transaction code
+3. Generate targeted training data from error analysis + SDK documentation
+4. Validate every example on Surfpool
+5. LoRA fine-tune and re-evaluate
 
 ## Setup
 
 ```bash
-# Clone
 git clone https://github.com/0xbstn/solana-lora-bench.git
-cd solana-lora-bench
-uv sync
+cd solana-lora-bench && uv sync
 
-# Parse trajectories (requires solana-bench data in ../solana-bench/)
-python scripts/parse_trajectories.py
-
-# Generate synthetic data (requires OpenAI-compatible API on localhost:8318)
-python scripts/generate_synthetic.py       # self-instruct + variations + error-recovery
-python scripts/generate_synthetic_v2.py    # targeted error patterns
-
-# Validate on Surfpool (requires surfpool running on localhost:8899)
-python scripts/validate_dataset.py -c 20
+# Validate dataset on Surfpool
+surfpool start -u https://api.mainnet-beta.solana.com --no-tui
+python scripts/validate_dataset.py -i data/processed/dataset.jsonl -c 10
 ```
 
 ## Repository Layout
 
 ```
 data/
-  processed/        Training dataset (dataset_base.jsonl)
-  swap/             DeFi/swap examples (excluded from basic benchmark)
+  processed/dataset.jsonl   Training dataset (1,305 validated examples)
 scripts/
-  parse_trajectories.py      Extract training pairs from Solana Bench runs
-  generate_synthetic.py      Self-instruct + variations + error-recovery generation
-  generate_synthetic_v2.py   Targeted generation for top 6 error patterns
-  validate_dataset.py        Validate examples on Surfpool (serialization check)
+  validate_dataset.py       Validate examples on Surfpool
+  parse_trajectories.py     Extract training pairs from benchmark runs
+  prepare_hf_dataset.py     Prepare for HuggingFace upload
 validator/
-  run.ts            Bun runner for transaction serialization testing
-  package.json      Dependencies for validation
-models/             LoRA adapters (after training)
-results/            Benchmark reports and error analysis
+  run.ts                    Bun runner for transaction serialization testing
+models/                     LoRA adapters
+results/
+  BENCHMARK_REPORT.md       Full benchmark analysis
 ```
 
 ## Related
 
 - [Solana Bench](https://github.com/solana-foundation/solana-gym-env) — the benchmark
-- [Solana Bench blog](https://solana.com/news/solana-bench) — methodology and results
 - [Surfpool](https://github.com/txtx/surfpool) — sandboxed Solana validator
 
 ## License
